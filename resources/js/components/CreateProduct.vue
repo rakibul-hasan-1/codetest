@@ -24,7 +24,12 @@
                         <h6 class="m-0 font-weight-bold text-primary">Media</h6>
                     </div>
                     <div class="card-body border">
-                        <vue-dropzone ref="myVueDropzone" id="dropzone" :options="dropzoneOptions"></vue-dropzone>
+                        <vue-dropzone ref="myVueDropzone"
+                        :include-styling="true"
+                        :useCustomSlot="true"
+                        id="dropzone"
+                        :options="dropzoneOptions"
+                        @vdropzone-success-multiple="success"></vue-dropzone>
                     </div>
                 </div>
             </div>
@@ -90,8 +95,8 @@
                 </div>
             </div>
         </div>
-
-        <button @click="saveProduct" type="submit" class="btn btn-lg btn-primary">Save</button>
+        <button v-if="product_id" @click="updateProduct" type="submit" class="btn btn-lg btn-primary">Update</button>
+        <button v-else @click="saveProduct" type="submit" class="btn btn-lg btn-primary">Save</button>
         <button type="button" class="btn btn-secondary btn-lg">Cancel</button>
     </section>
 </template>
@@ -100,7 +105,6 @@
 import vue2Dropzone from 'vue2-dropzone'
 import 'vue2-dropzone/dist/vue2Dropzone.min.css'
 import InputTag from 'vue-input-tag'
-
 export default {
     components: {
         vueDropzone: vue2Dropzone,
@@ -110,14 +114,25 @@ export default {
         variants: {
             type: Array,
             required: true
-        }
+        },
+        product:{
+            type: Object,
+            required: false
+        },
+        productvariant:{
+            type: Array,
+            required: false
+        },
     },
     data() {
         return {
-            product_name: '',
-            product_sku: '',
-            description: '',
+            product_id: this.product ? this.product.id : null,
+            product_name: this.product ? this.product.title : '',
+            product_sku: this.product ? this.product.sku : '',
+            description: this.product ? this.product.description : '',
             images: [],
+            tempAttachments: [],
+            attachments: [],
             product_variant: [
                 {
                     option: this.variants[0].id,
@@ -126,14 +141,88 @@ export default {
             ],
             product_variant_prices: [],
             dropzoneOptions: {
-                url: 'https://httpbin.org/post',
+                url: '/submitimage',
                 thumbnailWidth: 150,
                 maxFilesize: 0.5,
-                headers: {"My-Awesome-Header": "header value"}
+                headers: {"X-CSRF-TOKEN": document.head.querySelector("[name=csrf-token]").content},
+                // File Size allowed in MB
+                // Authentication Headers like Access_Token of your application
+                // The way you want to receive the files in the server
+                paramName: function(n) {
+                return "file[]";
+                },
+                dictDefaultMessage: "Upload Files Here xD",
+                thumbnailWidth: 250,
+                thumbnailHeight: 140,
+                uploadMultiple: true,
+                parallelUploads: 20
             }
+
         }
     },
     methods: {
+
+    // called on successful upload of a file
+    success(file, response) {
+      this.images=response.name;
+      console.log(this.images)
+    },
+    getvariant(){
+        let tags = [];
+        if(this.productvariant){
+            this.product_variant=[];
+            console.log(this.producttvariant)
+            this.productvariant.map(variant => 
+            {
+                // this.product_variant.push({
+                //     option: variant.variant_id,
+                //     tags: []
+                // })
+                const data={'id':variant.variant_id,'product_id':variant.product_id};
+                axios.post('/gettags', data).then(response => {
+                    console.log(response.data);
+                    this.product_variant.push({
+                        option: variant.variant_id,
+                        tags: response.data
+                    })
+
+                    //    this.checkVariant();     
+                }).catch(error => {
+                    console.log(error);
+                })
+                
+                
+            }
+                
+            )
+            console.log(this.product_variant)
+            const data1={id:this.product_id};
+            axios.post('/getpvprice', data1).then(response => {
+                    console.log(response.data);
+                    this.product_variant_prices=response.data
+                    //    this.checkVariant();     
+                }).catch(error => {
+                    console.log(error);
+                })
+            axios.post('/getpicture', data1).then(response => {
+                    console.log(response.data);
+                    response.data.map(data => {     
+                        console.log(data)  
+                        var file = { size: 123, name: "Icon", type: "image/png" };        
+                        var url = "http://127.0.0.1:8000/images/"+data.file_path;
+                        this.$refs.myVueDropzone.manuallyAddFile(file, url);
+                    })
+                    //    this.checkVariant();     
+                }).catch(error => {
+                    console.log(error);
+                })
+            
+            
+        }else{
+            console.log("no")
+        }
+        
+    },
         // it will push a new object into product variant
         newVariant() {
             let all_variants = this.variants.map(el => el.id)
@@ -145,6 +234,7 @@ export default {
                 option: available_variants[0],
                 tags: []
             })
+
         },
 
         // check the variant and render all the combination
@@ -179,6 +269,7 @@ export default {
 
         // store product into database
         saveProduct() {
+        console.log('tags',this.product_variant.tags);
             let product = {
                 title: this.product_name,
                 sku: this.product_sku,
@@ -191,17 +282,48 @@ export default {
 
             axios.post('/product', product).then(response => {
                 console.log(response.data);
+                this.product_name= ''
+                this.product_sku= ''
+                this.description= ''
+                this.images= []
+                this.tempAttachments= []
+                this.attachments= []
+                this.product_variant= [
+                    {
+                        option: this.variants[0].id,
+                        tags: []
+                    }
+                ],
+                this.product_variant_prices= []
             }).catch(error => {
                 console.log(error);
             })
 
             console.log(product);
+        },
+        updateProduct(){
+            let product = {
+                id:this.product_id,
+                title: this.product_name,
+                sku: this.product_sku,
+                description: this.description,
+                product_image: this.images,
+                product_variant: this.product_variant,
+                product_variant_prices: this.product_variant_prices
+            }
+            axios.post('/updateproduct', product).then(response => {
+                console.log(response.data);
+                window.location.href = "http://127.0.0.1:8000/product"
+            }).catch(error => {
+                console.log(error);
+            })
         }
 
 
     },
     mounted() {
         console.log('Component mounted.')
+        this.getvariant()
     }
 }
 </script>

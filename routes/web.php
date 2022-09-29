@@ -19,9 +19,15 @@ Route::get('/', function () {
 
 Auth::routes();
 
-Route::get('/home', 'HomeController@index')->name('home');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/home', 'HomeController@index')->name('home');
+    Route::get('/products/list/', 'ProductController@filter')->name('filter');
+    Route::post('/submitimage', 'ProductController@submitimage')->name('submitimage');
+    Route::post('/gettags', 'ProductController@gettags')->name('gettags');
+    Route::post('/getpvprice', 'ProductController@getpvprice')->name('getpvprice');
+    Route::post('/getpicture', 'ProductController@getpicture')->name('getpicture');
+    Route::post('/updateproduct', 'ProductController@updateproduct')->name('updateproduct');
     Route::resource('product-variant', 'VariantController');
     Route::resource('product', 'ProductController');
     Route::resource('blog', 'BlogController');

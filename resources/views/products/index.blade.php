@@ -8,14 +8,17 @@
 
 
     <div class="card">
-        <form action="" method="get" class="card-header">
+        <form action="{{route('filter')}}" method="get" class="card-header">
             <div class="form-row justify-content-between">
                 <div class="col-md-2">
                     <input type="text" name="title" placeholder="Product Title" class="form-control">
                 </div>
                 <div class="col-md-2">
                     <select name="variant" id="" class="form-control">
-
+                    <option value="">--Select A Variant--</option>
+                    @foreach($pv as $v)
+                    <option value="{{$v->id}}">{{$v->variant}}</option>
+                    @endforeach
                     </select>
                 </div>
 
@@ -42,42 +45,44 @@
                 <table class="table">
                     <thead>
                     <tr>
-                        <th>#</th>
-                        <th>Title</th>
-                        <th>Description</th>
-                        <th>Variant</th>
+                        <th width="30px">#</th>
+                        <th width="100px">Title</th>
+                        <th width="200px">Description</th>
+                        <th width="450px">Variant</th>
                         <th width="150px">Action</th>
                     </tr>
                     </thead>
 
                     <tbody>
-
+                    @foreach($products as $key=>$product)
                     <tr>
-                        <td>1</td>
-                        <td>T-Shirt <br> Created at : 25-Aug-2020</td>
-                        <td>Quality product in low cost</td>
+                        <td>{{$key+1}}</td>
+                        <td>{{$product->title}} <br> Created at : {{date('d-M-Y', strtotime($product->created_at))}}</td>
+                        <td>{{ Str::limit($product->description, 60)}}</td>
                         <td>
-                            <dl class="row mb-0" style="height: 80px; overflow: hidden" id="variant">
-
+                            <dl class="row mb-0" style="height: 80px; overflow: hidden" id="variant{{$key}}">
+                            @foreach($product->productvariantprice as $pvp)
                                 <dt class="col-sm-3 pb-0">
-                                    SM/ Red/ V-Nick
+                                   <p class="mb-0"> {{$pvp->variantone->variant ?? ""}} / {{$pvp->varianttwo->variant ?? ""}} /
+                                    {{$pvp->variantthree->variant ?? ""}} </P>
                                 </dt>
                                 <dd class="col-sm-9">
                                     <dl class="row mb-0">
-                                        <dt class="col-sm-4 pb-0">Price : {{ number_format(200,2) }}</dt>
-                                        <dd class="col-sm-8 pb-0">InStock : {{ number_format(50,2) }}</dd>
+                                        <dt class="col-sm-4 pb-0">Price : {{ number_format($pvp->price,2) }}</dt>
+                                        <dd class="col-sm-8 pb-0">InStock : {{ number_format($pvp->stock,2) }}</dd>
                                     </dl>
                                 </dd>
+                                @endforeach
                             </dl>
-                            <button onclick="$('#variant').toggleClass('h-auto')" class="btn btn-sm btn-link">Show more</button>
+                            <button onclick="$('#variant{{$key}}').toggleClass('h-auto')" class="btn btn-sm btn-link">Show more</button>
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ route('product.edit', 1) }}" class="btn btn-success">Edit</a>
+                                <a href="{{ route('product.edit', $product->id) }}" class="btn btn-success">Edit</a>
                             </div>
                         </td>
                     </tr>
-
+                    @endforeach
                     </tbody>
 
                 </table>
@@ -88,10 +93,10 @@
         <div class="card-footer">
             <div class="row justify-content-between">
                 <div class="col-md-6">
-                    <p>Showing 1 to 10 out of 100</p>
+                    <p>Showing {{ $products->firstItem() }} to {{ $products->lastItem() }} out of {{$products->total()}}</p>
                 </div>
                 <div class="col-md-2">
-
+                    {{$products->links()}}
                 </div>
             </div>
         </div>
